@@ -2,6 +2,7 @@ import { atom, read, update } from 'claude-code'
 import type { EngineInterface, ModelEffort, PromptDecoration, Register, Timer } from 'claude-code'
 
 import type { Host, Op, Sys, ThemeName, Usage } from '../types'
+import { diffOf, METER_CELLS, meterOf } from './diff'
 import { counterOf, glowOf, pathsOf, secretsOf } from './glow'
 import { cpuPercent, gibOf, parseProc } from './sys'
 import type { ProcSample } from './sys'
@@ -66,13 +67,13 @@ const VERBS: Record<string, string> = {
 const verbOf = (tool: string) => VERBS[tool] ?? (tool.startsWith('mcp__') ? 'RPC' : 'CALL')
 
 // The first of these a tool's input holds is what its log row names.
-const TARGET_FIELDS = ['file_path', 'command', 'pattern', 'url', 'query', 'description', 'skill']
+const TARGET_FIELDS = ['file_path', 'notebook_path', 'command', 'pattern', 'url', 'query', 'description', 'skill']
 const targetOf = (input: object) => {
   const fields = input as Record<string, unknown>
   for (const key of TARGET_FIELDS) {
     const value = fields[key]
     if (typeof value === 'string' && value !== '') {
-      return key === 'file_path' ? value.split('/').slice(-2).join('/') : value.replace(/\s+/g, ' ')
+      return key.endsWith('_path') ? value.split('/').slice(-2).join('/') : value.replace(/\s+/g, ' ')
     }
   }
 
@@ -612,6 +613,9 @@ export const register: Register = on => {
     const look = THEMES[await read($, theme)]
     const input = e.props.input
     const target = typeof input === 'object' && input !== null ? targetOf(input) : ''
+    // A finished edit shows the lines it added and removed, and a size meter.
+    const diff = diffOf(e.props.tool, e.props.output)
+    const filled = diff === null ? 0 : meterOf(diff)
 
     return (
       <Text wrap="truncate">
@@ -622,6 +626,13 @@ export const register: Register = on => {
           <Text color={look.warn}>⊘ interrupted</Text>
         ) : e.props.isErrored ? (
           <Text color={look.bad}>✗ fault</Text>
+        ) : diff !== null && diff.added + diff.removed > 0 ? (
+          <Text>
+            {diff.added > 0 && <Text color={look.main}>{`+${diff.added} `}</Text>}
+            {diff.removed > 0 && <Text color={look.bad}>{`−${diff.removed} `}</Text>}
+            <Text color={look.main}>{'▰'.repeat(filled)}</Text>
+            <Text color={look.dim}>{'▱'.repeat(METER_CELLS - filled)}</Text>
+          </Text>
         ) : (
           <Text color={look.main}>✓</Text>
         )}

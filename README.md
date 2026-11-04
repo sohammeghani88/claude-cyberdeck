@@ -33,6 +33,8 @@ In the desktop app, where `/plugin` does not run: click **+** next to the prompt
   paths get ✓ or ✗; pasted API keys and passwords are flagged `⚠ secret`; a live character and token
   counter. All of it is drawn only, never sent.
 - **Your messages** stand out as a tinted bar; finished tool calls fold into one line (`▸ EXEC npm test ✓`).
+- **Edit sizes**: each file edit's row shows the lines it added and removed and a four-cell size meter
+  (`▸ PATCH src/auth.ts +12 −3 ▰▰▱▱`), the meter filling a cell past 5, 25 and 100 changed lines.
 - **Hacker spinner** ("Decrypting thought vectors ▌") and alerts for test runs, commits and pushes.
 - **`/deck ops`**: a side panel logging every tool call, which turns into Matrix rain when idle.
 
