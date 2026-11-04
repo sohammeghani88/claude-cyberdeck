@@ -3,6 +3,7 @@ import type { EngineInterface, ModelEffort, PromptDecoration, Register, Timer } 
 
 import type { Host, Op, Sys, ThemeName, Usage } from '../types'
 import { diffOf, METER_CELLS, meterOf } from './diff'
+import { parseNumstat, parseStatus } from './git'
 import { counterOf, glowOf, pathsOf, secretsOf } from './glow'
 import { cpuPercent, gibOf, parseProc } from './sys'
 import type { ProcSample } from './sys'
@@ -21,7 +22,11 @@ const FILE_CYAN = '#00e5ff'
 const ops = atom({ plugin: 'cyberdeck', key: 'ops' } as const, [], { shape: 'ops-1' })
 const seq = atom({ plugin: 'cyberdeck', key: 'seq' } as const, 0)
 const faults = atom({ plugin: 'cyberdeck', key: 'faults' } as const, 0)
-const host = atom({ plugin: 'cyberdeck', key: 'host' } as const, { cwd: '', branch: null, offsetMinutes: 0 }, { shape: 'host-1' })
+const host = atom(
+  { plugin: 'cyberdeck', key: 'host' } as const,
+  { cwd: '', branch: null, ahead: 0, files: 0, added: 0, removed: 0, offsetMinutes: 0 },
+  { shape: 'host-2' },
+)
 const usage = atom(
   { plugin: 'cyberdeck', key: 'usage' } as const,
   { contextPercent: null, usd: null, startedAt: null, limits: [] },
@@ -91,6 +96,8 @@ const SPINNER: Record<'requesting' | 'responding' | 'thinking' | 'tool-input' | 
 // Transcript rows drawn as one compact line once the call is done; any other
 // tool's row (a subagent's progress, a plan) keeps the engine's drawing.
 const COMPACT_TOOLS = new Set(['Bash', 'Read', 'Write', 'Edit', 'MultiEdit', 'NotebookEdit', 'Grep', 'Glob', 'WebFetch', 'WebSearch'])
+// Tools that change files, and so move the HUD's git radar.
+const EDIT_TOOLS = new Set(['Write', 'Edit', 'MultiEdit', 'NotebookEdit'])
 
 const TEST_COMMAND = /\b(pytest|jest|vitest|mocha|rspec|phpunit|unittest)\b|\b(cargo|go|npm|pnpm|yarn|bun|deno|mix|dotnet) (run )?test\b|\bnpm t\b|\bmake test\b/
 const BARS = '▁▂▃▄▅▆▇█'
@@ -159,16 +166,33 @@ const offsetOf = (stamp: string) => {
   return parts ? (parts[1] === '-' ? -1 : 1) * (Number(parts[2]) * 60 + Number(parts[3])) : 0
 }
 
+// A git command's output in the folder; empty where it fails (no repository,
+// no commit yet). It takes no lock, so it never blocks the person's own git.
+const gitOut = ($: EngineInterface, cwd: string, args: string[]) =>
+  $.process.run(['git', '--no-optional-locks', ...args], { cwd }).then(
+    ran => (ran.exitCode === 0 ? ran.stdout : ''),
+    () => '',
+  )
+
+// Refreshes can overlap; only the latest one writes.
+let hostRuns = 0
+
 const refreshHost = async ($: EngineInterface, cwd: string) => {
+  const run = ++hostRuns
   const branch = await $.process.run(['git', 'branch', '--show-current'], { cwd }).then(
     ran => (ran.exitCode === 0 && ran.stdout.trim() !== '' ? ran.stdout.trim() : null),
     () => null,
   )
-  const offsetMinutes = await $.process.run(['date', '+%z']).then(ran => offsetOf(ran.stdout), () => 0)
+  const [status, diff, offsetMinutes] = await Promise.all([
+    gitOut($, cwd, ['status', '--porcelain=v2', '--branch']).then(parseStatus),
+    gitOut($, cwd, ['diff', '--numstat', 'HEAD']).then(parseNumstat),
+    $.process.run(['date', '+%z']).then(ran => offsetOf(ran.stdout), () => 0),
+  ])
+  const fresh: Host = { cwd, branch, ...status, ...diff, offsetMinutes }
   const was = await read($, host)
   // Every prompt row reads this, so an unchanged value is not written again.
-  if (was.cwd !== cwd || was.branch !== branch || was.offsetMinutes !== offsetMinutes) {
-    await update($, host, () => ({ cwd, branch, offsetMinutes }))
+  if (run === hostRuns && (Object.keys(fresh) as Array<keyof Host>).some(key => was[key] !== fresh[key])) {
+    await update($, host, () => fresh)
   }
 }
 
@@ -405,6 +429,7 @@ export const register: Register = on => {
     const isOk = ran.deny === undefined && ran.isError !== true
     await update($, ops, list => list.map(one => (one.id === id ? { ...one, ms, isOk } : one)))
     if (!isOk) await update($, faults, n => n + 1)
+    if (isOk && EDIT_TOOLS.has(String(e.tool))) await refreshHost($, (await read($, host)).cwd).catch(() => undefined)
 
     if (e.tool === 'Bash' && ran.deny === undefined) {
       if (TEST_COMMAND.test(e.command)) {
@@ -448,6 +473,8 @@ export const register: Register = on => {
       const at = await $.clock.now()
       await update($, isBusy, () => false)
       await update($, idleSince, () => at)
+      // A reply may have changed files through the shell too.
+      await refreshHost($, (await read($, host)).cwd).catch(() => undefined)
     }
 
     return done
@@ -753,6 +780,10 @@ export const register: Register = on => {
             <Text color={look.accent} weight="bold">{`◢◤ ${glitched('CYBERDECK', at)} `}</Text>
             <Text color={look.accent}>{` ${homeless(place.cwd) || '~'}`}</Text>
             {place.branch !== null && <Text color={look.dim}>{` ⎇ ${place.branch}`}</Text>}
+            {place.ahead > 0 && <Text color={look.warn}>{` ↑${place.ahead}`}</Text>}
+            {place.files > 0 && <Text color={look.accent}>{` ✎${place.files}`}</Text>}
+            {place.added > 0 && <Text color={look.main}>{` +${place.added}`}</Text>}
+            {place.removed > 0 && <Text color={look.bad}>{` −${place.removed}`}</Text>}
           </Text>
           <Text>
             {e.props.isWorking

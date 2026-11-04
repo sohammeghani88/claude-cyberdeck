@@ -8,7 +8,17 @@ export type Op = {
   isOk: boolean | null
 }
 
-export type Host = { cwd: string; branch: string | null; offsetMinutes: number }
+// The folder's git radar beside it: commits ahead of the upstream, changed
+// paths, and the lines added and removed since the last commit.
+export type Host = {
+  cwd: string
+  branch: string | null
+  ahead: number
+  files: number
+  added: number
+  removed: number
+  offsetMinutes: number
+}
 
 // A plan's usage window: `five_hour`, `seven_day` or `spend_limit`; resetsAt in ms.
 export type Limit = { kind: string; percent: number; resetsAt: number | null }

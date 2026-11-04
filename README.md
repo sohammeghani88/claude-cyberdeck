@@ -28,6 +28,9 @@ In the desktop app, where `/plugin` does not run: click **+** next to the prompt
 
 - **HUD under the prompt box**: context, CPU and RAM gauges, 5-hour and 7-day plan usage with reset
   times, and one-click **model** and **effort** switches.
+- **Git radar** beside the branch: `⎇ main ↑2 ✎3 +48 −12` is 2 commits not pushed, 3 changed files,
+  and the lines added and removed since the last commit. It reads the local repository only, after
+  each edit, each git command and each reply.
 - **Boot sequence and banner** at the start of each session.
 - **Smart prompt box**: action words, danger words, file names and `code` light up as you type; file
   paths get ✓ or ✗; pasted API keys and passwords are flagged `⚠ secret`; a live character and token
