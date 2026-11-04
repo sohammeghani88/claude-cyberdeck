@@ -1,5 +1,5 @@
 import { atom, read, update } from 'claude-code'
-import type { EngineInterface, PromptDecoration, Register, Timer } from 'claude-code'
+import type { EngineInterface, ModelEffort, PromptDecoration, Register, Timer } from 'claude-code'
 
 import type { Host, Op, Sys, ThemeName, Usage } from '../types'
 import { counterOf, glowOf, pathsOf, secretsOf } from './glow'
@@ -271,10 +271,17 @@ const checkPaths = async ($: EngineInterface, text: string, look: Look, cwd: str
   if (isChanged) await $.prompt.paint({ text, decorations: decorationsOf(text, look, cwd) })
 }
 
+// A level clicked while a reply runs: Claude Code queues the /effort it runs
+// until the reply ends, so until then the deck sends the level itself.
+let pendingEffort: string | undefined
+
 const switchEffort = async ($: EngineInterface, level: string) => {
-  await $.command.run({ command: 'effort', args: level })
+  pendingEffort = level
   await update($, effort, () => level)
   $.ui.toast(`[deck] effort → ${level}`)
+  await $.command.run({ command: 'effort', args: level }).finally(() => {
+    if (pendingEffort === level) pendingEffort = undefined
+  })
 }
 
 const startBoot = async ($: EngineInterface) => {
@@ -417,6 +424,10 @@ export const register: Register = on => {
     if (e.agentId === undefined) {
       const seen = { model: aliasOf(e.model), effort: e.effort }
       await update($, model, () => seen.model)
+      // A clicked level not yet applied rides on this request instead of the old one.
+      if (pendingEffort !== undefined && seen.effort !== undefined && seen.effort !== pendingEffort) {
+        return yield* next({ ...e, effort: pendingEffort as ModelEffort })
+      }
       if (typeof seen.effort === 'string') await update($, effort, () => String(seen.effort))
     }
 
