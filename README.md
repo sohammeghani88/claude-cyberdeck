@@ -3,6 +3,8 @@
 A hacker-terminal skin for [Claude Code](https://claude.com/claude-code): a live HUD under the prompt,
 a boot sequence, a kernel-style ops log, Matrix rain, a smart prompt box and six colour themes.
 
+![CYBERDECK in the Glacier theme](docs/themes/glacier.png)
+
 ## Install
 
 At the prompt of a Claude Code terminal session:
@@ -43,6 +45,18 @@ In the desktop app, where `/plugin` does not run: click **+** next to the prompt
 | `/deck theme <name> here` | Recolours this session only |
 | `/deck ops` | Opens the ops log / Matrix rain panel |
 | `/deck boot` | Replays the boot sequence |
+
+## Themes
+
+Six palettes, switched with `/deck theme <name>`:
+
+| `matrix` | `neon` |
+| --- | --- |
+| ![Matrix theme](docs/themes/matrix.png) | ![Neon theme](docs/themes/neon.png) |
+| **`blood`** | **`amber`** |
+| ![Blood theme](docs/themes/blood.png) | ![Amber theme](docs/themes/amber.png) |
+| **`ghost`** | **`glacier`** |
+| ![Ghost theme](docs/themes/ghost.png) | ![Glacier theme](docs/themes/glacier.png) |
 
 ## Matching Claude Code themes
 
