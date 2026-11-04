@@ -1,0 +1,29 @@
+{
+  "name": "CYBERDECK Glacier",
+  "base": "dark",
+  "overrides": {
+    "claude": "#7dd3fc",
+    "claudeShimmer": "#e0f7ff",
+    "text": "#e6f6ff",
+    "inactive": "#3b6e8f",
+    "inactiveShimmer": "#7dd3fc",
+    "subtle": "#38bdf8",
+    "suggestion": "#e0f7ff",
+    "permission": "#e0f7ff",
+    "permissionShimmer": "#7dd3fc",
+    "success": "#7dd3fc",
+    "error": "#ff6b8b",
+    "warning": "#ffe08a",
+    "warningShimmer": "#e0f7ff",
+    "promptBorder": "#38bdf8",
+    "promptBorderShimmer": "#7dd3fc",
+    "bashBorder": "#ffe08a",
+    "planMode": "#e0f7ff",
+    "autoAccept": "#e0f7ff",
+    "userMessageBackground": "#0a1a2a",
+    "userMessageBackgroundHover": "#16324a",
+    "selectionBg": "#16324a",
+    "briefLabelYou": "#e0f7ff",
+    "briefLabelClaude": "#7dd3fc"
+  }
+}

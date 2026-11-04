@@ -1,0 +1,29 @@
+{
+  "name": "CYBERDECK Blood",
+  "base": "dark",
+  "overrides": {
+    "claude": "#ff3b3b",
+    "claudeShimmer": "#ff9a3c",
+    "text": "#ffd6d6",
+    "inactive": "#8b1a1a",
+    "inactiveShimmer": "#ff3b3b",
+    "subtle": "#d7263d",
+    "suggestion": "#ff9a3c",
+    "permission": "#ff9a3c",
+    "permissionShimmer": "#ff3b3b",
+    "success": "#ff3b3b",
+    "error": "#ff7b7b",
+    "warning": "#ffd23f",
+    "warningShimmer": "#ff9a3c",
+    "promptBorder": "#d7263d",
+    "promptBorderShimmer": "#ff3b3b",
+    "bashBorder": "#ffd23f",
+    "planMode": "#ff9a3c",
+    "autoAccept": "#ff9a3c",
+    "userMessageBackground": "#2a0b0b",
+    "userMessageBackgroundHover": "#5c1414",
+    "selectionBg": "#5c1414",
+    "briefLabelYou": "#ff9a3c",
+    "briefLabelClaude": "#ff3b3b"
+  }
+}

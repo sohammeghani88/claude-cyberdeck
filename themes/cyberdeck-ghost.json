@@ -1,0 +1,29 @@
+{
+  "name": "CYBERDECK Ghost",
+  "base": "dark",
+  "overrides": {
+    "claude": "#e6e6e6",
+    "claudeShimmer": "#ffffff",
+    "text": "#e6e6e6",
+    "inactive": "#6b6b6b",
+    "inactiveShimmer": "#e6e6e6",
+    "subtle": "#4a4a4a",
+    "suggestion": "#ffffff",
+    "permission": "#ffffff",
+    "permissionShimmer": "#e6e6e6",
+    "success": "#e6e6e6",
+    "error": "#ff5f5f",
+    "warning": "#c0c0c0",
+    "warningShimmer": "#ffffff",
+    "promptBorder": "#4a4a4a",
+    "promptBorderShimmer": "#e6e6e6",
+    "bashBorder": "#c0c0c0",
+    "planMode": "#ffffff",
+    "autoAccept": "#ffffff",
+    "userMessageBackground": "#1c1c1c",
+    "userMessageBackgroundHover": "#3a3a3a",
+    "selectionBg": "#3a3a3a",
+    "briefLabelYou": "#ffffff",
+    "briefLabelClaude": "#e6e6e6"
+  }
+}

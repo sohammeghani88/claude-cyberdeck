@@ -1,0 +1,29 @@
+{
+  "name": "CYBERDECK Matrix",
+  "base": "dark",
+  "overrides": {
+    "claude": "#00ff41",
+    "claudeShimmer": "#b6ff9e",
+    "text": "#c8ffd4",
+    "inactive": "#00802b",
+    "inactiveShimmer": "#00ff41",
+    "subtle": "#00b32c",
+    "suggestion": "#b6ff9e",
+    "permission": "#b6ff9e",
+    "permissionShimmer": "#00ff41",
+    "success": "#00ff41",
+    "error": "#ff3355",
+    "warning": "#e5ff00",
+    "warningShimmer": "#b6ff9e",
+    "promptBorder": "#00b32c",
+    "promptBorderShimmer": "#00ff41",
+    "bashBorder": "#e5ff00",
+    "planMode": "#b6ff9e",
+    "autoAccept": "#b6ff9e",
+    "userMessageBackground": "#0b1f12",
+    "userMessageBackgroundHover": "#14532d",
+    "selectionBg": "#14532d",
+    "briefLabelYou": "#b6ff9e",
+    "briefLabelClaude": "#00ff41"
+  }
+}

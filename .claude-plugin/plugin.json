@@ -1,0 +1,6 @@
+{
+  "name": "cyberdeck",
+  "version": "0.1.0",
+  "description": "Hacker-terminal HUD for Claude Code: boot sequence, live telemetry, kernel-style ops log, themes",
+  "types": "./types/index.d.ts"
+}

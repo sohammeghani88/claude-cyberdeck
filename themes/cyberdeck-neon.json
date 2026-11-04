@@ -1,0 +1,29 @@
+{
+  "name": "CYBERDECK Neon",
+  "base": "dark",
+  "overrides": {
+    "claude": "#00e5ff",
+    "claudeShimmer": "#ff2bd6",
+    "text": "#e0f7ff",
+    "inactive": "#5b5fc7",
+    "inactiveShimmer": "#00e5ff",
+    "subtle": "#ff2bd6",
+    "suggestion": "#ff2bd6",
+    "permission": "#ff2bd6",
+    "permissionShimmer": "#00e5ff",
+    "success": "#00e5ff",
+    "error": "#ff3864",
+    "warning": "#ffe600",
+    "warningShimmer": "#ff2bd6",
+    "promptBorder": "#ff2bd6",
+    "promptBorderShimmer": "#00e5ff",
+    "bashBorder": "#ffe600",
+    "planMode": "#ff2bd6",
+    "autoAccept": "#ff2bd6",
+    "userMessageBackground": "#1a1033",
+    "userMessageBackgroundHover": "#3b1f5c",
+    "selectionBg": "#3b1f5c",
+    "briefLabelYou": "#ff2bd6",
+    "briefLabelClaude": "#00e5ff"
+  }
+}

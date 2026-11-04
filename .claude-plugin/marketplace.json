@@ -1,0 +1,5 @@
+{
+  "name": "claude-cyberdeck",
+  "owner": { "name": "sohammeghani88" },
+  "plugins": [{ "name": "cyberdeck", "source": "./" }]
+}

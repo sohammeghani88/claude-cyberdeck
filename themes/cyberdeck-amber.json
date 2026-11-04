@@ -1,0 +1,29 @@
+{
+  "name": "CYBERDECK Amber",
+  "base": "dark",
+  "overrides": {
+    "claude": "#ffb000",
+    "claudeShimmer": "#ffd27f",
+    "text": "#ffe0a3",
+    "inactive": "#996a00",
+    "inactiveShimmer": "#ffb000",
+    "subtle": "#cc8a00",
+    "suggestion": "#ffd27f",
+    "permission": "#ffd27f",
+    "permissionShimmer": "#ffb000",
+    "success": "#ffb000",
+    "error": "#ff4d4d",
+    "warning": "#ffffff",
+    "warningShimmer": "#ffd27f",
+    "promptBorder": "#cc8a00",
+    "promptBorderShimmer": "#ffb000",
+    "bashBorder": "#ffffff",
+    "planMode": "#ffd27f",
+    "autoAccept": "#ffd27f",
+    "userMessageBackground": "#2a1d00",
+    "userMessageBackgroundHover": "#5c4000",
+    "selectionBg": "#5c4000",
+    "briefLabelYou": "#ffd27f",
+    "briefLabelClaude": "#ffb000"
+  }
+}
