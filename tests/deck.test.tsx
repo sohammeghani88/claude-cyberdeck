@@ -3,7 +3,7 @@ import type { On, SessionRateLimit } from 'claude-code'
 
 import Decrypt from '../hooks/decrypt.client'
 import { counterOf, glowOf, pathsOf, secretsOf } from '../hooks/glow'
-import { cpuPercent, parseProc } from '../hooks/sys'
+import { cpuPercent, parseCpuTemp, parseGpu, parseProc } from '../hooks/sys'
 
 // The HUD draws in the hint line under the prompt box.
 const BAND = {
@@ -45,10 +45,19 @@ const procSample = (k: number) =>
   ].join('\n')
 
 // Nothing sits beneath the plugin: each hook here stands for the engine.
-const engine = (on: On, toasts: string[], rateLimits: SessionRateLimit[] = []) => {
+const engine = (
+  on: On,
+  toasts: string[],
+  rateLimits: SessionRateLimit[] = [],
+  gpu = '40, 1843, 4096, 55\n',
+  cpuTemp = '82000\n',
+) => {
   let reads = 0
   const stdoutOf = (argv: readonly string[]) =>
-    argv[0] === 'git' ? 'main\n' : argv[0] === 'date' ? '+0530\n' : procSample(reads++)
+    argv[0] === 'git' ? 'main\n'
+    : argv[0] === 'date' ? '+0530\n'
+    : argv[0] === 'sh' ? (argv.join(' ').includes('nvidia-smi') ? gpu : cpuTemp)
+    : procSample(reads++)
   mock.store(on)
   on('command.register', () => ({ value: { command: 'deck' } }))
   on('ui.toast', (_, e) => (toasts.push(e.text), { value: undefined }))
@@ -269,14 +278,62 @@ test('the HUD reads the machine: CPU and RAM beside the context', async ($, on) 
   const clock = mock.clock(on, { now: 7_200_000 })
   engine(on, [])
   await $.session.start({ cwd: '/home/op/proj', surface: 'terminal', isInteractive: true })
-  await clock.advance(4500)
+  await clock.advance(10_500)
 
   const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
   expect(await ui.find({ type: 'Text', text: /ctx .* 34%/ })).toBeDefined()
-  expect(await ui.find({ type: 'Text', text: /cpu .* 25%/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /cpu .* 25%  82°C/ })).toBeDefined()
   expect(await ui.find({ type: 'Text', text: /ram .* 50% 7\.6\/15\.3G/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /gpu .* 40%  55°C/ })).toBeDefined()
+  expect((await ui.find({ type: 'Text', text: /^ +82°C$/ }))?.props).toMatchObject({ color: '#ffd23f' })
+  expect(await ui.find({ type: 'Text', text: /vram .* 45%  1\.8\/4\.0G/ })).toBeDefined()
   // Only what a coder glances at: no cost, uptime, op count, disk or network.
   expect(await ui.find({ type: 'Text', text: /\$|OPS|UP |DSK|NET/ })).toBeUndefined()
+  await ui.unmount()
+})
+
+test('a sleeping GPU shows zzz and is left asleep', async ($, on) => {
+  const clock = mock.clock(on, { now: 7_200_000 })
+  engine(on, [], [], 'asleep\n')
+  await $.session.start({ cwd: '/home/op/proj', surface: 'terminal', isInteractive: true })
+  await clock.advance(10_500)
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /gpu .*zzz/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /vram .*--%/ })).toBeDefined()
+  await ui.unmount()
+
+  expect(parseGpu('100, 1824, 4096, 55\n')).toEqual({ busy: 100, memUsed: 1824 * 1024 ** 2, memTotal: 4096 * 1024 ** 2, temp: 55 })
+  expect(parseGpu('100, 1824, 4096, [N/A]')).toMatchObject({ busy: 100, temp: null })
+  expect(parseGpu('[N/A], 1824, 4096, 55')).toBe(null)
+  expect(parseGpu('')).toBe(null)
+  expect(parseCpuTemp('80000\n')).toBe(80)
+  expect(parseCpuTemp('')).toBe(null)
+})
+
+test('temperatures read cool, warm and hot in the same colors under every theme', async ($, on) => {
+  const clock = mock.clock(on, { now: 7_200_000 })
+  engine(on, [], [], '40, 1843, 4096, 55\n', '97000\n')
+  await $.session.start({ cwd: '/home/op/proj', surface: 'terminal', isInteractive: true })
+  await $.command.run({ ...COMMAND, command: 'deck', args: 'theme blood here' })
+  await clock.advance(10_500)
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  // Blood's own palette has red for calm and white for alarm; a temperature ignores it.
+  expect((await ui.find({ type: 'Text', text: /^ +55°C$/ }))?.props).toMatchObject({ color: '#4da6ff' })
+  expect((await ui.find({ type: 'Text', text: /^ +97°C$/ }))?.props).toMatchObject({ backgroundColor: '#ff3b3b' })
+  await ui.unmount()
+})
+
+test('a machine without an NVIDIA GPU shows no GPU rows', async ($, on) => {
+  const clock = mock.clock(on, { now: 7_200_000 })
+  engine(on, [], [], '')
+  await $.session.start({ cwd: '/home/op/proj', surface: 'terminal', isInteractive: true })
+  await clock.advance(10_500)
+
+  const ui = await $.ui.mount({ ...BAND, surface: 'terminal' })
+  expect(await ui.find({ type: 'Text', text: /cpu .* 25%/ })).toBeDefined()
+  expect(await ui.find({ type: 'Text', text: /gpu |vram / })).toBeUndefined()
   await ui.unmount()
 })
 

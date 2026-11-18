@@ -25,8 +25,13 @@ export type Limit = { kind: string; percent: number; resetsAt: number | null }
 
 export type Usage = { contextPercent: number | null; usd: number | null; startedAt: number | null; limits: Limit[] }
 
-// The machine's live figures: CPU percent per sample, memory in bytes.
-export type Sys = { cpu: number[]; memUsed: number; memTotal: number }
+// The NVIDIA GPU's busy percent per sample (0 while it sleeps), its memory in
+// bytes, and its temperature in °C (null while it sleeps).
+export type Gpu = { busy: number[]; isAsleep: boolean; memUsed: number; memTotal: number; temp: number | null }
+
+// The machine's live figures: CPU percent per sample, memory in bytes, CPU
+// temperature in °C (null where no sensor answers); gpu null where no NVIDIA GPU answers.
+export type Sys = { cpu: number[]; memUsed: number; memTotal: number; cpuTemp: number | null; gpu: Gpu | null }
 
 export type ThemeName = 'matrix' | 'neon' | 'blood' | 'amber' | 'ghost' | 'glacier'
 

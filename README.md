@@ -26,7 +26,7 @@ In the desktop app, where `/plugin` does not run: click **+** next to the prompt
 
 ## What you get
 
-- **HUD under the prompt box**: context, CPU and RAM gauges, 5-hour and 7-day plan usage with reset
+- **HUD under the prompt box**: context, CPU and RAM gauges, GPU and VRAM below them, CPU and GPU temperatures, 5-hour and 7-day plan usage with reset
   times, and one-click **model** and **effort** switches.
 - **Git radar** beside the branch: `⎇ main ↑2 ✎3 +48 −12` is 2 commits not pushed, 3 changed files,
   and the lines added and removed since the last commit. It reads the local repository only, after
@@ -73,3 +73,5 @@ Claude Code once, then pick **CYBERDECK …** in `/theme`.
 - Best in fullscreen mode (`/tui fullscreen`): the ops panel docks beside the chat, and new replies
   play a short decrypt animation.
 - CPU and RAM come from `/proc`, so they show on Linux only.
+- GPU and VRAM come from `nvidia-smi`, so they show for NVIDIA GPUs only. They update every 10 seconds, and a GPU that has gone to sleep is left asleep (`zzz`).
+- CPU temperature comes from the `coretemp` or `k10temp` sensor. Temperatures use the same colors in every theme: blue when cool, yellow when warm (CPU from 80°C, GPU from 75°C), and a red block when hot (CPU from 95°C, GPU from 87°C).

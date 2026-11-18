@@ -5,7 +5,7 @@ import type { Host, Op, Sys, ThemeName, Usage } from '../types'
 import { diffOf, METER_CELLS, meterOf } from './diff'
 import { parseNumstat, parseStatus } from './git'
 import { counterOf, glowOf, pathsOf, secretsOf } from './glow'
-import { cpuPercent, gibOf, parseProc } from './sys'
+import { CPU_TEMP_PROBE, cpuPercent, gibOf, GPU_PROBE, parseCpuTemp, parseGpu, parseProc } from './sys'
 import type { ProcSample } from './sys'
 
 const PANE = 'ops'
@@ -34,8 +34,8 @@ const usage = atom(
 )
 const sys = atom(
   { plugin: 'cyberdeck', key: 'sys' } as const,
-  { cpu: [], memUsed: 0, memTotal: 0 },
-  { shape: 'sys-2' },
+  { cpu: [], memUsed: 0, memTotal: 0, cpuTemp: null, gpu: null },
+  { shape: 'sys-4' },
 )
 // The session's model by alias and its effort level, as last set or seen.
 const model = atom({ plugin: 'cyberdeck', key: 'model' } as const, null)
@@ -218,6 +218,16 @@ const resetOf = (ms: number) => {
 
 const heatOf = (percent: number, look: Look) => (percent < 60 ? look.main : percent < 85 ? look.warn : look.bad)
 
+// Warm and hot in °C. An Intel HX CPU throttles at 100°C and runs in the 80s
+// and low 90s under load; an NVIDIA laptop GPU holds itself near 87°C.
+const CPU_HEAT = [80, 95] as const
+const GPU_HEAT = [75, 87] as const
+// Fixed, not the theme's: blood's calm is red and its alarm white. Blue to yellow
+// stays apart for color-blind eyes, and hot is a block that no palette hides.
+const COOL = '#4da6ff'
+const WARM = '#ffd23f'
+const HOT = '#ff3b3b'
+
 // A reload starts the module over, and drops the old timers with it.
 let ticker: Timer | undefined
 let booter: Timer | undefined
@@ -230,13 +240,33 @@ const sampleSystem = async ($: EngineInterface) => {
   const sample = ran.exitCode === 0 ? parseProc(ran.stdout) : null
   if (sample === null) return
 
+  const heat = await $.process.run(CPU_TEMP_PROBE).then(
+    probed => (probed.exitCode === 0 ? parseCpuTemp(probed.stdout) : null),
+    () => null,
+  )
+
   const before = lastSample
   lastSample = sample
   await update($, sys, (was): Sys => ({
     cpu: before === undefined ? was.cpu : [...was.cpu, cpuPercent(before, sample)].slice(-24),
     memUsed: sample.memTotal - sample.memAvailable,
     memTotal: sample.memTotal,
+    cpuTemp: heat,
+    gpu: was.gpu,
   }))
+}
+
+const sampleGpu = async ($: EngineInterface) => {
+  const ran = await $.process.run(GPU_PROBE, { timeoutMs: 5000 })
+  const sample = ran.exitCode === 0 ? parseGpu(ran.stdout) : null
+  await update($, sys, (was): Sys => {
+    if (sample === null) return { ...was, gpu: null }
+    const busy = [...(was.gpu?.busy ?? []), sample === 'asleep' ? 0 : sample.busy].slice(-24)
+
+    return sample === 'asleep'
+      ? { ...was, gpu: { busy, isAsleep: true, memUsed: 0, memTotal: was.gpu?.memTotal ?? 0, temp: null } }
+      : { ...was, gpu: { busy, isAsleep: false, memUsed: sample.memUsed, memTotal: sample.memTotal, temp: sample.temp } }
+  })
 }
 
 // The aliases the /config Model row offers, and /effort's levels.
@@ -328,6 +358,8 @@ const tick = async ($: EngineInterface) => {
   const second = Math.floor(at / 1000)
   if (second % 5 === 0) await refreshUsage($)
   if (second % 2 === 0 && !(await read($, isHidden))) await sampleSystem($)
+  // Each nvidia-smi call keeps the GPU up a while, so it is asked less often.
+  if (second % 10 === 0 && !(await read($, isHidden))) await sampleGpu($)
 }
 
 export const register: Register = on => {
@@ -744,14 +776,34 @@ export const register: Register = on => {
       const ctx = meter.contextPercent === null ? null : Math.round(meter.contextPercent)
       const ram = machine.memTotal === 0 ? null : Math.round((100 * machine.memUsed) / machine.memTotal)
       const cpuNow = machine.cpu.at(-1) ?? 0
+      const gpu = machine.gpu
+      const gpuNow = gpu?.busy.at(-1) ?? 0
+      const vram = gpu === null || gpu.memTotal === 0 || gpu.isAsleep ? null : Math.round((100 * gpu.memUsed) / gpu.memTotal)
+      // Padded alike, so the RAM and VRAM gauges line up.
+      const ramUsed = ram === null ? '' : ` ${gibOf(machine.memUsed)}/${gibOf(machine.memTotal)}G`
+      const vramUsed = vram === null || gpu === null ? '' : ` ${gibOf(gpu.memUsed)}/${gibOf(gpu.memTotal)}G`
+      const usedWidth = Math.max(ramUsed.length, vramUsed.length)
+      // A temperature takes six cells beside its percent, kept blank where the other has one.
+      const tempWidth = machine.cpuTemp === null && (gpu?.temp ?? null) === null ? 0 : 6
+      const tempOf = (temp: number | null, heat: readonly [number, number]) =>
+        temp === null
+          ? <Text>{' '.repeat(tempWidth)}</Text>
+          : temp < heat[0] ? <Text color={COOL}>{` ${String(temp).padStart(3)}°C`}</Text>
+          : temp < heat[1] ? <Text color={WARM}>{` ${String(temp).padStart(3)}°C`}</Text>
+          : [<Text>{' '}</Text>, <Text backgroundColor={HOT} color="#000000" weight="bold">{`${String(temp).padStart(3)}°C`}</Text>]
       // Three columns share each row; a bar takes what its column's words leave.
       const column = Math.floor(inner / 3)
       const barOf = (words: number) => Math.max(6, Math.min(24, column - words))
-      const cpuWidth = barOf(10)
-      const cpuTrail = [
-        ...Array<number | null>(Math.max(0, cpuWidth - machine.cpu.length)).fill(null),
-        ...machine.cpu.slice(-cpuWidth),
-      ]
+      const trailWidth = barOf(10 + tempWidth)
+      const trailOf = (samples: number[]) =>
+        [
+          ...Array<number | null>(Math.max(0, trailWidth - samples.length)).fill(null),
+          ...samples.slice(-trailWidth),
+        ].map(percent =>
+          percent === null
+            ? <Text color={look.dim}>▁</Text>
+            : <Text color={heatOf(percent, look)}>{BARS[Math.min(7, Math.floor((percent / 100) * 8))] ?? '█'}</Text>,
+        )
       const gaugeOf = (percent: number | null, width: number) => {
         if (percent === null) return <Text color={look.dim}>{`${'▱'.repeat(width)}  --%`}</Text>
         const filled = Math.max(0, Math.min(width, Math.round((percent / 100) * width)))
@@ -797,20 +849,38 @@ export const register: Register = on => {
             <Text color={look.dim}>ctx </Text>
             {gaugeOf(ctx, barOf(10))}
           </Text>
-          <Text wrap="truncate">
-            <Text color={look.dim}>cpu </Text>
-            {cpuTrail.map(percent =>
-              percent === null
-                ? <Text color={look.dim}>▁</Text>
-                : <Text color={heatOf(percent, look)}>{BARS[Math.min(7, Math.floor((percent / 100) * 8))] ?? '█'}</Text>,
+          <Box flexDirection="column">
+            <Text wrap="truncate">
+              <Text color={look.dim}>cpu </Text>
+              {trailOf(machine.cpu)}
+              <Text color={heatOf(cpuNow, look)}>{` ${String(cpuNow).padStart(3)}%`}</Text>
+              {tempOf(machine.cpuTemp, CPU_HEAT)}
+            </Text>
+            {gpu !== null && (
+              <Text wrap="truncate">
+                <Text color={look.dim}>gpu </Text>
+                {trailOf(gpu.busy)}
+                {gpu.isAsleep
+                  ? <Text color={look.dim}>  zzz</Text>
+                  : <Text color={heatOf(gpuNow, look)}>{` ${String(gpuNow).padStart(3)}%`}</Text>}
+                {tempOf(gpu.temp, GPU_HEAT)}
+              </Text>
             )}
-            <Text color={heatOf(cpuNow, look)}>{` ${String(cpuNow).padStart(3)}%`}</Text>
-          </Text>
-          <Text wrap="truncate">
-            <Text color={look.dim}>ram </Text>
-            {gaugeOf(ram, barOf(20))}
-            <Text color={look.dim}>{ram === null ? '' : ` ${gibOf(machine.memUsed)}/${gibOf(machine.memTotal)}G`}</Text>
-          </Text>
+          </Box>
+          <Box flexDirection="column" alignItems="flex-end">
+            <Text wrap="truncate">
+              <Text color={look.dim}>ram </Text>
+              {gaugeOf(ram, barOf(20))}
+              <Text color={look.dim}>{ramUsed.padStart(usedWidth)}</Text>
+            </Text>
+            {gpu !== null && (
+              <Text wrap="truncate">
+                <Text color={look.dim}>vram </Text>
+                {gaugeOf(vram, barOf(20))}
+                <Text color={look.dim}>{vramUsed.padStart(usedWidth)}</Text>
+              </Text>
+            )}
+          </Box>
         </Box>,
         limits.length === 0 ? (
           <Text color={look.dim} wrap="truncate">
